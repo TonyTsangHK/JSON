@@ -1,17 +1,6 @@
 apply plugin: 'java'
 
-sourceCompatibility = 1.6
-
 version = '1.0.0'
-
-tasks.withType(JavaCompile) {
-    options.encoding = 'UTF-8'
-}
-
-repositories {
-    mavenLocal()
-    mavenCentral()
-}
 
 dependencies {
     testCompile group: 'org.testng', name: 'testng', version: '6.9.13.6'
