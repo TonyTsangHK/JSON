@@ -12,13 +12,19 @@ dependencies {
 sourceSets {
     main {
         java {
-            srcDir 'src'
+            srcDir "src/main/java"
+        }
+        kotlin {
+            srcDir "src/main/kotlin"
         }
     }
 
     test {
         java {
-            srcDir 'test'
+            srcDir "src/test/java"
+        }
+        kotlin {
+            srcDir "src/test/kotlin"
         }
     }
 }

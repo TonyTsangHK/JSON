@@ -160,7 +160,6 @@ public class JSONArray {
         this(new JSONTokener(source));
     }
 
-
     /**
      * Construct a JSONArray from a Collection.
      * @param collection     A Collection.
