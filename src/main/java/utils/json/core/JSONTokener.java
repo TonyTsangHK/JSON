@@ -1,5 +1,7 @@
 package utils.json.core;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.ParseException;
@@ -83,9 +85,7 @@ public class JSONTokener {
             this.myIndex -= 1;
         }
     }
-
-
-
+    
     /**
      * Get the hex value of a character (base16).
      * @param c A character between '0' and '9' or between 'A' and 'F' or
@@ -104,8 +104,7 @@ public class JSONTokener {
         }
         return -1;
     }
-
-
+    
     /**
      * Determine if the source string still contains characters that next()
      * can consume.
@@ -167,7 +166,6 @@ public class JSONTokener {
          return this.mySource.substring(i, j);
      }
 
-
     /**
      * Get the next char in the string, skipping whitespace
      * and comments (slashslash, slashstar, and hash).
@@ -179,28 +177,28 @@ public class JSONTokener {
             char c = next();
             if (c == BACK_SLASH) {
                 switch (next()) {
-                case BACK_SLASH:
-                    do {
-                        c = next();
-                    } while (c != NEW_LINE && c != CARRIAGE_RETURN && c != 0);
-                    break;
-                case STAR:
-                    for (;;) {
-                        c = next();
-                        if (c == 0) {
-                            throw syntaxError("Unclosed comment");
-                        }
-                        if (c == STAR) {
-                            if (next() == BACK_SLASH) {
-                                break;
+                    case BACK_SLASH:
+                        do {
+                            c = next();
+                        } while (c != NEW_LINE && c != CARRIAGE_RETURN && c != 0);
+                        break;
+                    case STAR:
+                        for (;;) {
+                            c = next();
+                            if (c == 0) {
+                                throw syntaxError("Unclosed comment");
                             }
-                            back();
+                            if (c == STAR) {
+                                if (next() == BACK_SLASH) {
+                                    break;
+                                }
+                                back();
+                            }
                         }
-                    }
-                    break;
-                default:
-                    back();
-                    return BACK_SLASH;
+                        break;
+                    default:
+                        back();
+                        return BACK_SLASH;
                 }
             } else if (c == SHARP) {
                 do {
@@ -237,29 +235,29 @@ public class JSONTokener {
             case FORWARD_SLASH:
                 c = next();
                 switch (c) {
-                case 'b':
-                    builder.append('\b');
-                    break;
-                case 't':
-                    builder.append(TAB);
-                    break;
-                case 'n':
-                    builder.append(NEW_LINE);
-                    break;
-                case 'f':
-                    builder.append('\f');
-                    break;
-                case 'r':
-                    builder.append(CARRIAGE_RETURN);
-                    break;
-                case 'u':
-                    builder.append((char)Integer.parseInt(next(4), 16));
-                    break;
-                case 'x' :
-                    builder.append((char) Integer.parseInt(next(2), 16));
-                    break;
-                default:
-                    builder.append(c);
+                    case 'b':
+                        builder.append('\b');
+                        break;
+                    case 't':
+                        builder.append(TAB);
+                        break;
+                    case 'n':
+                        builder.append(NEW_LINE);
+                        break;
+                    case 'f':
+                        builder.append('\f');
+                        break;
+                    case 'r':
+                        builder.append(CARRIAGE_RETURN);
+                        break;
+                    case 'u':
+                        builder.append((char)Integer.parseInt(next(4), 16));
+                        break;
+                    case 'x' :
+                        builder.append((char) Integer.parseInt(next(2), 16));
+                        break;
+                    default:
+                        builder.append(c);
                 }
                 break;
             default:
@@ -447,6 +445,78 @@ public class JSONTokener {
     }
 
     /**
+     * Read next hex byte from the string reader
+     *
+     * @param reader string reader
+     *
+     * @return next hex byte
+     */
+    // Copied from StringUtil, keep this project independent with no dependency
+    private int nextHexByte(StringReader reader) {
+        int v1 = nextHex(reader), v2 = nextHex(reader);
+
+        if (v1 == -1 || v2 == -1) {
+            return -1;
+        } else {
+            return (((v1 << 4) & 0xF0) | (v2 & 0xF));
+        }
+    }
+    
+    /**
+     * Read next hex value from the string reader
+     *
+     * @param reader string reader
+     *
+     * @return next hex value
+     */
+    // Copied from StringUtil, keep this project independent with no dependency
+    private int nextHex(StringReader reader) {
+        try {
+            int byt = reader.read();
+
+            while (byt != -1) {
+                if (byt >= '0' && byt <= '9') {
+                    return byt - 48;
+                } else if (byt >= 'A' && byt <= 'F') {
+                    return byt - 55;
+                } else if (byt >= 'a' && byt <= 'f') {
+                    return byt - 87;
+                } else {
+                    byt = reader.read();
+                }
+            }
+
+            return -1;
+        } catch (IOException iox) {
+            // Not expected exception, dummy catch block, return -1 anyway
+            return -1;
+        }
+    }
+    
+    public byte[] constructByteArray(String hexContent) {
+        if (hexContent.length()==0) {
+            // Empty byte array
+            return new byte[0];
+        }
+        
+        if (hexContent.length() % 2 == 1) {
+            hexContent += "0"; // Possible binary data corruption, just pad it with empty bits
+        }
+        
+        byte[] bytes = new byte[hexContent.length()/2];
+        
+        StringReader reader = new StringReader(hexContent);
+
+        for (int i = 0; i < bytes.length; i++) {
+            int v1 = nextHex(reader), v2 = nextHex(reader);
+            
+            bytes[i] = (byte) ((((v1 << 4) & 0xF0) | (v2 & 0xF)) & 0xFF);
+        }
+        
+        return bytes;
+    }
+
+    /**
      * Get the next value. The value can be a Boolean, Double, Integer,
      * JSONArray, JSONObject, Long, or String, or the JSONObject.NULL object.
      * @throws JSONException If syntax error.
@@ -490,7 +560,7 @@ public class JSONTokener {
                     return nextArray(new ArrayList<Object>());
                 }
         }
-
+        
         /*
          * Handle unquoted text. This could be the values true, false, or
          * null, or it can be a number. An implementation (such as this one)
@@ -499,6 +569,14 @@ public class JSONTokener {
          * Accumulate characters until we reach the end of the text or a
          * formatting character.
          */
+        
+        boolean isBinaryData = false;
+        
+        // check for pattern \hex\, since \hex\ is currently the only special pattern, no back movement
+        if (c == FORWARD_SLASH && next() == 'h' && next() == 'e' && next() == 'x' && next() == FORWARD_SLASH) {
+            isBinaryData = true;
+            c=next();
+        }
 
         StringBuilder builder = new StringBuilder();
         char b = c;
@@ -507,12 +585,17 @@ public class JSONTokener {
             c = next();
         }
         back();
-
+        
         /*
          * If it is true, false, or null, return the proper value.
          */
 
         s = builder.toString().trim();
+        
+        if (isBinaryData) {
+            return constructByteArray(s);
+        }
+        
         if (s.equals("")) {
             throw syntaxError("Missing value");
         }
